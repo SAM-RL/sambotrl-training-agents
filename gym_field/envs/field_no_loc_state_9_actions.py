@@ -466,7 +466,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         # possible_starts = [[8, 30], [11, 35], [10, 34], [
         #     80, 80], [60, 80], [80, 60], [60, 70], [40, 40]]
         # possible_starts = [[36, 83]]
-        possible_starts = [[80, 90]]
+        possible_starts = [[75, 90], [90, 75], [75, 75], [50, 50]]
         return random.choice(possible_starts)
 
     def get_next_position(self, action):

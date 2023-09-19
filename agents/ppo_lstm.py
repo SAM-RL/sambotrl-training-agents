@@ -1,5 +1,6 @@
 import os
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.callbacks import CheckpointCallback
 from sb3_contrib import RecurrentPPO
 
 class PPO_LSTM_Agent:
@@ -8,13 +9,20 @@ class PPO_LSTM_Agent:
         self.env = env
         self.name = name
         self.model_path = os.path.join(path, name)
+        self.checkpoint_callback = CheckpointCallback(
+            save_freq=1000,
+            save_path="./output/checkpoints/",
+            name_prefix=self.name,
+            save_replay_buffer=True,
+            save_vecnormalize=True,
+        )
         if load_saved_model and os.path.exists(self.model_path):
             self.model = RecurrentPPO.load(self.model_path, env=env)
         else:
             self.model = RecurrentPPO('MlpLstmPolicy', env, verbose=1)
     
     def train(self, n_timestep=40_000, eval=True):
-        self.model.learn(total_timesteps=n_timestep, progress_bar=False)
+        self.model.learn(total_timesteps=n_timestep, progress_bar=False, callback=[self.checkpoint_callback])
         self.model.save(self.model_path)
         if eval:
             mean_reward, std_reward = evaluate_policy(self.model, self.model.get_env(), n_eval_episodes=10)
