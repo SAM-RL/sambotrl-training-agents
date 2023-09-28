@@ -26,6 +26,8 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             view_scope_half_side=5,
             testing_field=None,
             num_sources=2,
+            with_coverage_field=True
+            coverage_field_size=[5, 5],
             adv_diff_params={}):
         # Open AI Gym stuff
         metadata = {'render.modes': ['human']}
@@ -43,7 +45,11 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         print("Advection Diffusion parameters: ")
         print("dx, dy, vx, vy, dt, k: " +
               str((self.dx, self.dy, self.vx, self.vy, self.dt, self.k)))
-
+        
+        # NEW PARAM
+        self.with_coverage_field = with_coverage_field
+        self.coverage_field_size = coverage_field_size
+        
         # Set field grid params/variables
         self.field_size = field_size
         self.field_area = self.field_size[0] * self.field_size[1]
@@ -90,11 +96,14 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         self.gradients_0 = []
         self.gradients_1 = []
 
-        # Environment Observation space. This includes x, y, conc, grad_x, grad_y as state
+        # TTOO DDOO: Environment Observation space. This includes x, y, conc, grad_x, grad_y as state
         low = np.array([0.0, -100.0, -100.0])
         high = np.array([25.0, 100.0, 100.0])
-        self.observation_space = spaces.Box(
-            low, high, dtype=np.float32)
+        if self.with_coverage_field:
+            flatten_coverage_fields_length = (self.coverage_field_size*self.coverage_field_size)*2
+            low = np.concatenate([low, (-1) * np.ones(flatten_coverage_fields_length)])
+            high = np.concatenate([high, np.ones(flatten_coverage_fields_length)])
+        self.observation_space = spaces.Box(low, high, dtype=np.float32)
 
         # Agent Action related params/variables
         self.action_space_map = {}
@@ -407,9 +416,16 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         self.concentrations.append(concentration)
         self.gradients_0.append(self.agent_gradients[0])
         self.gradients_1.append(self.agent_gradients[1])
+        
+        next_state = [concentration, self.agent_gradients[0], self.agent_gradients[1]]
+        if self.with_coverage_field:
+            visited_field = (self.env_curr_field > 0).astype(float)
+            global_field, local_field = self.get_ego_coverage_fields(visited_field, \
+                                                                self.agent_position, self.coverage_field_size)
+            next_state = np.concatenate([next_state, global_field.flatten(), local_field.flatten()])
 
         # Return reward, next_state, done, observations
-        return ([concentration, self.agent_gradients[0], self.agent_gradients[1]], reward, done, observations)
+        return (next_state, reward, done, observations)
 
     def reset(self):
         # Reset agent related params
@@ -466,7 +482,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         # possible_starts = [[8, 30], [11, 35], [10, 34], [
         #     80, 80], [60, 80], [80, 60], [60, 70], [40, 40]]
         # possible_starts = [[36, 83]]
-        possible_starts = [[75, 90], [90, 75], [75, 75], [50, 50]]
+        possible_starts = [[80, 90]]
         return random.choice(possible_starts)
 
     def get_next_position(self, action):
@@ -507,6 +523,23 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             hit_wall = True
 
         return (hit_wall, next_state)
+    
+    def get_ego_coverage_fields(self, field, pos=[50,50], output_shape=(5,5)):
+        field_half_size = field.shape[0] // 2
+        block_shape = (field.shape[0] // output_shape[0], field.shape[1] // output_shape[1])
+        padded_field = np.pad(field, (field_half_size, field_half_size), 'constant', constant_values=1)
+        ego_field = padded_field[pos[0]:pos[0]+field_half_size*2, \
+                                 pos[1]:pos[1]+field_half_size*2]
+        blocks = ego_field.reshape((ego_field.shape[0]//block_shape[0], block_shape[0], \
+                                 ego_field.shape[1]//block_shape[1], block_shape[1]))
+        global_coverage_field = blocks.sum(axis=(1,3)) / (block_shape[0] * block_shape[1])
+        local_coverage_field = padded_field[pos[0]+field_half_size-(output_shape[0]//2) \
+                                           :pos[0]+field_half_size+(output_shape[0]//2 \
+                                                                  +output_shape[0]%2), \
+                                           pos[1]+field_half_size-(output_shape[1]//2) \
+                                           :pos[1]+field_half_size+(output_shape[1]//2 \
+                                                                  +output_shape[1]%2)]
+    return global_coverage_field, local_coverage_field
 
     def calculate_reward_1(self, next_state, frac_coverage_improvement):
         prev_mapping_error = 0
