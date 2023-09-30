@@ -22,11 +22,11 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             learning_experiment_name,
             output_dir,
             field_size=[100, 100],
-            max_num_steps=300,
+            max_num_steps=400,
             view_scope_half_side=5,
             testing_field=None,
             num_sources=2,
-            with_coverage_field=True
+            with_coverage_field=True,
             coverage_field_size=[5, 5],
             adv_diff_params={}):
         # Open AI Gym stuff
@@ -100,7 +100,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         low = np.array([0.0, -100.0, -100.0])
         high = np.array([25.0, 100.0, 100.0])
         if self.with_coverage_field:
-            flatten_coverage_fields_length = (self.coverage_field_size*self.coverage_field_size)*2
+            flatten_coverage_fields_length = (self.coverage_field_size[0]*self.coverage_field_size[1])*2
             low = np.concatenate([low, (-1) * np.ones(flatten_coverage_fields_length)])
             high = np.concatenate([high, np.ones(flatten_coverage_fields_length)])
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
@@ -370,7 +370,14 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
 
             observation = {"location": self.agent_position}
 
-            return ([concentration, self.agent_gradients[0], self.agent_gradients[1]], reward, True, observation)
+            next_state = [concentration, self.agent_gradients[0], self.agent_gradients[1]]
+            if self.with_coverage_field:
+                visited_field = (self.env_curr_field > 0).astype(float)
+                global_field, local_field = self.get_ego_coverage_fields(visited_field, \
+                                                                    self.agent_position, self.coverage_field_size)
+                next_state = np.concatenate([next_state, global_field.flatten(), local_field.flatten()])
+
+            return (next_state, reward, True, observation)
 
         # Update field state
         self.update_env_field()
@@ -387,7 +394,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         self.agent_gradients = self.calculate_gradients(self.agent_position)
 
         # Get the new reward
-        reward = self.calculate_reward_3(
+        reward = self.calculate_reward_4(
             next_position, self.agent_gradients)
 
         # Update number of steps
@@ -471,7 +478,14 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         self.gradients_0.append(self.agent_gradients[0])
         self.gradients_1.append(self.agent_gradients[1])
 
-        return [concentration, self.agent_gradients[0], self.agent_gradients[1]]
+        next_state = [concentration, self.agent_gradients[0], self.agent_gradients[1]]
+        if self.with_coverage_field:
+            visited_field = (self.env_curr_field > 0).astype(float)
+            global_field, local_field = self.get_ego_coverage_fields(visited_field, \
+                                                                self.agent_position, self.coverage_field_size)
+            next_state = np.concatenate([next_state, global_field.flatten(), local_field.flatten()])
+
+        return next_state
 
     def choose_random_start_position(self):
         # return [np.random.randint(self.view_scope_half_side + 1, self.field_size[0] - self.view_scope_half_side - 1),
@@ -539,7 +553,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
                                            pos[1]+field_half_size-(output_shape[1]//2) \
                                            :pos[1]+field_half_size+(output_shape[1]//2 \
                                                                   +output_shape[1]%2)]
-    return global_coverage_field, local_coverage_field
+        return global_coverage_field, local_coverage_field
 
     def calculate_reward_1(self, next_state, frac_coverage_improvement):
         prev_mapping_error = 0
@@ -578,6 +592,13 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             sum_sq_grad = (gradients[0] ** 2) + (gradients[1] ** 2)
             reward_from_grad = 20 * np.exp(-5 * sum_sq_grad)
             return reward_from_vs + reward_from_grad
+        
+    def calculate_reward_4(self, next_state, gradients):
+        """
+        Assuming that the reward is only proportional to what is being copied by the viewscope.
+        Coverage not considered.
+        """
+        return - 1e-2 * np.sum(np.abs(self.agent_curr_field - self.env_curr_field))
 
     def normalize(self, field):
         max_val = field.max()
