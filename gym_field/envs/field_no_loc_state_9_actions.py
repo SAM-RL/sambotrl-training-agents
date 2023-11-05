@@ -353,31 +353,9 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         # Get the next state
         (hit_wall, next_position) = self.get_next_position(action)
         if (hit_wall):
-            # Terminate the episode, and return a large negative reward
-            reward = -1000
-            self.rewards.append(reward)
-            # Get concentration
-            concentration = self.env_curr_field[self.agent_position[0],
-                                                self.agent_position[1]]
-            # Get gradients
-            self.agent_gradients = self.calculate_gradients(
-                self.agent_position)
-
-            # Record field values
-            self.concentrations.append(concentration)
-            self.gradients_0.append(self.agent_gradients[0])
-            self.gradients_1.append(self.agent_gradients[1])
-
-            observation = {"location": self.agent_position}
-
-            next_state = [concentration, self.agent_gradients[0], self.agent_gradients[1]]
-            if self.with_coverage_field:
-                visited_field = (self.env_curr_field > 0).astype(float)
-                global_field, local_field = self.get_ego_coverage_fields(visited_field, \
-                                                                    self.agent_position, self.coverage_field_size)
-                next_state = np.concatenate([next_state, global_field.flatten(), local_field.flatten()])
-
-            return (next_state, reward, True, observation)
+            # Stay at the same place if hitting boundary
+            next_position = self.agent_position
+        revisit_cell = True if (self.agent_field_visited[next_position[0], next_position[1]]>0) else False
 
         # Update field state
         self.update_env_field()
@@ -395,7 +373,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
 
         # Get the new reward
         reward = self.calculate_reward_4(
-            next_position, self.agent_gradients)
+            next_position, self.agent_gradients, hit_wall, revisit_cell)
 
         # Update number of steps
         self.num_steps += 1
@@ -404,7 +382,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         done = False
         if (self.num_steps >= self.max_num_steps):
             done = True
-            reward += 1000
+            # reward += 1000
 
         self.rewards.append(reward)
 
@@ -426,7 +404,8 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         
         next_state = [concentration, self.agent_gradients[0], self.agent_gradients[1]]
         if self.with_coverage_field:
-            visited_field = (self.env_curr_field > 0).astype(float)
+            # visited_field = (self.env_curr_field > 0).astype(float)
+            visited_field = np.abs(1-self.agent_field_visited)
             global_field, local_field = self.get_ego_coverage_fields(visited_field, \
                                                                 self.agent_position, self.coverage_field_size)
             next_state = np.concatenate([next_state, global_field.flatten(), local_field.flatten()])
@@ -496,7 +475,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
         # possible_starts = [[8, 30], [11, 35], [10, 34], [
         #     80, 80], [60, 80], [80, 60], [60, 70], [40, 40]]
         # possible_starts = [[36, 83]]
-        possible_starts = [[80, 90]]
+        possible_starts = [[80, 90], [50,50], [75, 75], [40, 60]]
         return random.choice(possible_starts)
 
     def get_next_position(self, action):
@@ -541,7 +520,7 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
     def get_ego_coverage_fields(self, field, pos=[50,50], output_shape=(5,5)):
         field_half_size = field.shape[0] // 2
         block_shape = (field.shape[0] // output_shape[0], field.shape[1] // output_shape[1])
-        padded_field = np.pad(field, (field_half_size, field_half_size), 'constant', constant_values=1)
+        padded_field = np.pad(field, (field_half_size, field_half_size), 'constant', constant_values=-1)
         ego_field = padded_field[pos[0]:pos[0]+field_half_size*2, \
                                  pos[1]:pos[1]+field_half_size*2]
         blocks = ego_field.reshape((ego_field.shape[0]//block_shape[0], block_shape[0], \
@@ -593,12 +572,17 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             reward_from_grad = 20 * np.exp(-5 * sum_sq_grad)
             return reward_from_vs + reward_from_grad
         
-    def calculate_reward_4(self, next_state, gradients):
+    def calculate_reward_4(self, next_state, gradients, hit_wall=False, revisit_cell=False):
         """
         Assuming that the reward is only proportional to what is being copied by the viewscope.
         Coverage not considered.
         """
-        return - 1e-2 * np.sum(np.abs(self.agent_curr_field - self.env_curr_field))
+        hit_wall_penalty = -50 if hit_wall else 0
+        revisit_cell_penalty =  -10 if revisit_cell else 0
+        reward_from_vs = 1e-2 * np.sum(self.curr_view_scope)
+        reward_from_grad = 20 * np.exp(-5 * (gradients[0] ** 2) + (gradients[1] ** 2)) if reward_from_vs < 10 else 0
+        # print(f"REWARD: ${reward_from_vs}, ${reward_from_grad}, ${hit_wall_penalty}")
+        return reward_from_vs + reward_from_grad + hit_wall_penalty + revisit_cell_penalty
 
     def normalize(self, field):
         max_val = field.max()

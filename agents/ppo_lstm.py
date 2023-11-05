@@ -1,4 +1,5 @@
 import os
+import torch as th
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import CheckpointCallback
 from sb3_contrib import RecurrentPPO
@@ -16,10 +17,12 @@ class PPO_LSTM_Agent:
             save_replay_buffer=True,
             save_vecnormalize=True,
         )
+        self.policy_kwargs = dict(activation_fn=th.nn.ReLU,
+                     net_arch=dict(pi=[128, 64, 64], vf=[128, 64, 64]))
         if load_saved_model and os.path.exists(self.model_path):
             self.model = RecurrentPPO.load(self.model_path, env=env)
-        else:
-            self.model = RecurrentPPO('MlpLstmPolicy', env, verbose=1)
+        else:        
+            self.model = RecurrentPPO('MlpLstmPolicy', env, verbose=1, policy_kwargs=self.policy_kwargs)
     
     def train(self, n_timestep=40_000, eval=True):
         self.model.learn(total_timesteps=n_timestep, progress_bar=False, callback=[self.checkpoint_callback])
