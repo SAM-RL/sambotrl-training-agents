@@ -4,9 +4,9 @@ import argparse
 import numpy as np
 import agents
 
-DEFAULT_ENV = 'field-no-loc-state-with-grad-reward-9-actions-v0'
-DEFAULT_MODEL = 'dqn'
-DEFAULT_EXPERIMENT_NAME = 'dqn-no-loc-9-action-with-grad-reward'
+DEFAULT_ENV = 'field-9-actions-v0'
+DEFAULT_MODEL = 'ppo_lstm'
+DEFAULT_EXPERIMENT_NAME = 'dqn-9-action'
 DEFAULT_ENV_OUTPUT_DIR = "gym_output"
 DEFAULT_N_SOURCE = 2
 DEFAULT_N_STEPS = 40_000
@@ -27,8 +27,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # setup environment
-    env = gym.make(args.env, learning_experiment_name=args.name,  \
-        output_dir=DEFAULT_ENV_OUTPUT_DIR, num_sources=DEFAULT_N_SOURCE, adv_diff_params=ADV_DIFF_PARAMS)
+    env = gym.make(args.env)
     
     # train & evaluate stable-baseline3 model
     model = model_dict[args.model](env)
@@ -45,7 +44,7 @@ if __name__ == "__main__":
             action, hidden_state = model.predict(obs, lstm_state=hidden_state, start=done)
             obs, reward, done, observation = env.step(action.item())
             if done:
-                env.view_testing_episode_state(episode_num, steps)
+                env.view_env_state(episode_num, steps)
                 break
             steps += 1
 

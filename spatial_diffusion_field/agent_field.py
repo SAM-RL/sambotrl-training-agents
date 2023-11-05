@@ -28,6 +28,7 @@ class AgentField():
         self.load_params(params_dict)
         self.vs_field = np.zeros((self.size,self.size))
         self.visited_field = np.zeros((self.size,self.size))
+        self.viewscope = np.zeros([2 * self.vs_hsize + 1, 2 * self.vs_hsize + 1])
         self.fov_masks = fov_masks
         self.fov_masks_sum = np.sum(fov_masks,axis=(1,2))
         
@@ -44,6 +45,7 @@ class AgentField():
         min_x, max_x = pos[0] - self.vs_hsize, pos[0] + self.vs_hsize + 1
         min_y, max_y = pos[1] - self.vs_hsize, pos[1] + self.vs_hsize + 1
         self.vs_field[min_x:max_x, min_y:max_y] = env_field[min_x:max_x, min_y:max_y]
+        self.viewscope = self.vs_field[min_x:max_x, min_y:max_y]
         self.update_viewscope_field()
         self.visited_field[pos[0], pos[1]] = np.minimum(VISITED_MASK, self.visited_field[pos[0], pos[1]])
         
@@ -76,3 +78,4 @@ class AgentField():
     def reset(self):
         self.vs_field = np.zeros((self.size,self.size))
         self.visited_field = np.zeros((self.size,self.size))
+        self.viewscope = np.zeros([2 * self.vs_hsize + 1, 2 * self.vs_hsize + 1])

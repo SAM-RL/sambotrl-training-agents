@@ -32,9 +32,9 @@ class SpatialTemporalFieldNineActions(gym.Env):
             self,
             data_path='./envs.pickle',
             output_dir='./output',
-            max_num_steps=300,
+            max_num_steps=200,
             viewscope_size=5,
-            detect_source_radius=8,
+            detect_source_radius=5,
           ):
         # Open AI Gym stuff
         metadata = {'render.modes': ['human']}
@@ -83,10 +83,10 @@ class SpatialTemporalFieldNineActions(gym.Env):
 
     def check_source_detected(self, pos):
         for src in self.env_field.sources:
-            if src not in self.detected_sources \
+            if (src not in np.array(self.detected_sources)) \
                 and (abs(src[0]-pos[0])<self.src_radius or abs(src[1]-pos[1])<self.src_radius):
                 self.agent_field.mask_detected_src(src)
-                self.detected_sources.append(src)    
+                self.detected_sources.append(list(src))    
 
     def agent_near_any_source(self, pos):
         for src in self.env_field.sources:
@@ -200,7 +200,7 @@ class SpatialTemporalFieldNineActions(gym.Env):
         return next_state
 
     def choose_random_start_position(self):
-        possible_starts = [[80, 90], [50,50], [75, 75], [40, 60]]
+        possible_starts = [[75, 80]]
         return random.choice(possible_starts)
 
     def get_next_position(self, action):
@@ -253,12 +253,22 @@ class SpatialTemporalFieldNineActions(gym.Env):
         return np.sum(np.abs(self.agent_field.vs_field - self.env_field.field))
 
     def calculate_reward(self, pos, hitwall):
-        hitwall_penalty = -10 if hitwall else 0
-        if self.agent_near_any_source(pos):
-            self.near_source_penalty += 2
+        # hitwall_penalty = -10 if hitwall else 0
+        # if self.agent_near_any_source(pos):
+        #     self.near_source_penalty -= 2
+        # else:
+        #     self.near_source_penalty = 0
+
+        reward_from_vs = 1e-2 * np.sum(self.agent_field.viewscope)
+
+        if reward_from_vs < 10:
+            return reward_from_vs
         else:
-            self.near_source_penalty = 0
-        return 1e-2 * np.sum(self.agent_field.vs_field) + hitwall_penalty + self.near_source_penalty
+            sum_sq_grad = (self.agent_gradients[0] ** 2) + (self.agent_gradients[1] ** 2)
+            reward_from_grad = 20 * np.exp(-5 * sum_sq_grad)
+            return reward_from_vs + reward_from_grad
+
+        # return 1e-2 * np.sum(self.agent_field.vs_field) + hitwall_penalty + self.near_source_penalty
 
     def view_env_state(self, episode_num, timestep, save=False, path=None):
 
