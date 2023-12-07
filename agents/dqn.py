@@ -12,7 +12,7 @@ class DQN_Agent:
         if load_saved_model and os.path.exists(self.model_path):
            self.model = DQN.load(self.model_path, env=env)
         else:
-            self.model = DQN('MlpPolicy', env, verbose=1)
+            self.model = DQN('CnnPolicy', env, verbose=1)
     
     def train(self, n_timestep=40_000, eval=True):
         self.model.learn(total_timesteps=n_timestep)

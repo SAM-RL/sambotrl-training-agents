@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import agents
 
-DEFAULT_ENV = 'field-9-actions-v0'
+DEFAULT_ENV = 'field-9-actions-image-v0'
 DEFAULT_MODEL = 'ppo_lstm'
 DEFAULT_EXPERIMENT_NAME = 'dqn-9-action'
 DEFAULT_ENV_OUTPUT_DIR = "gym_output"
@@ -16,6 +16,7 @@ ADV_DIFF_PARAMS = {"vx": -0.6, "vy": 0.8}
 model_dict = {
     'dqn': agents.DQN_Agent,
     'ppo_lstm': agents.PPO_LSTM_Agent,
+    'ppo': agents.PPO_LSTM_Agent,
 }
 
 if __name__ == "__main__":
@@ -31,7 +32,6 @@ if __name__ == "__main__":
     
     # train & evaluate stable-baseline3 model
     model = model_dict[args.model](env)
-    #model.train(n_timestep=args.steps)
 
     # evaluate
     for episode_num in range(DEFAULT_TEST_EPISODES):

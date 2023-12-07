@@ -4,8 +4,8 @@ import argparse
 import numpy as np
 import agents
 
-DEFAULT_ENV = 'field-9-actions-v0'
-DEFAULT_MODEL = 'dqn'
+DEFAULT_ENV = 'field-9-actions-image-v0'
+DEFAULT_MODEL = 'ppo_lstm'
 DEFAULT_EXPERIMENT_NAME = 'dqn-no-loc-9-action-with-grad-reward'
 DEFAULT_ENV_OUTPUT_DIR = "gym_output"
 DEFAULT_N_SOURCE = 2

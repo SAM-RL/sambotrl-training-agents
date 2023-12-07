@@ -8,3 +8,7 @@ register(
     id='field-9-actions-v0',
     entry_point='gym_field.envs:SpatialTemporalFieldNineActions'
 )
+register(
+    id='field-9-actions-image-v0',
+    entry_point='gym_field.envs:SpatialTemporalFieldImageStateNineActions'
+)

@@ -247,13 +247,8 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
     def create_test_field(self, num):
         field = np.zeros(self.field_size)
         if (num == 1):
-            print("Creating testing field-1")
-            # Testing field-1
             source1 = [30, 30]
             conc1 = 25
-
-            # source2 = [50, 60]
-            # conc2 = 25
 
             source3 = [75, 66]
             conc3 = 17
@@ -262,13 +257,10 @@ class SpatialTemporalFieldNoLocStateWithGradRewardConcNineActions(gym.Env):
             conc4 = 22
 
             field += self.add_source(source1, conc1)
-            # field += self.add_source(source2, conc2)
             field += self.add_source(source3, conc3)
             field += self.add_source(source4, conc4)
             return field
         else:
-            print("Creating testing field-2")
-            # Testing field-1
             source1 = [20, 30]
             conc1 = 23
 

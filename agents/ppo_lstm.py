@@ -11,18 +11,16 @@ class PPO_LSTM_Agent:
         self.name = name
         self.model_path = os.path.join(path, name)
         self.checkpoint_callback = CheckpointCallback(
-            save_freq=1000,
-            save_path="./output/checkpoints/",
+            save_freq=10000,
+            save_path=f"./output/checkpoints/{name}/",
             name_prefix=self.name,
             save_replay_buffer=True,
             save_vecnormalize=True,
         )
-        self.policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch=dict(pi=[128, 64, 64], vf=[128, 64, 64]))
-        if load_saved_model and os.path.exists(self.model_path):
+        if load_saved_model and os.path.exists(self.model_path+'.zip'):
             self.model = RecurrentPPO.load(self.model_path, env=env)
         else:        
-            self.model = RecurrentPPO('MlpLstmPolicy', env, verbose=1, policy_kwargs=self.policy_kwargs)
+            self.model = RecurrentPPO('MultiInputLstmPolicy', env, verbose=1, tensorboard_log='./output/tensorboard')
     
     def train(self, n_timestep=40_000, eval=True):
         self.model.learn(total_timesteps=n_timestep, progress_bar=False, callback=[self.checkpoint_callback])
