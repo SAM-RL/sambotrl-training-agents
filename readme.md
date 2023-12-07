@@ -1,4 +1,4 @@
-# Training SambotRL Agent with PPO-LSTM
+## Training SambotRL Agent with PPO-LSTM
 
 ### Training & Evaluation
 Available agents include: DQN, PPO, PPO-LSTM. To train PPO-LSTM model, please run:
