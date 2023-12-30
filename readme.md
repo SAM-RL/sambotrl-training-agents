@@ -1,4 +1,4 @@
-# Training SambotRL Agent with PPO-LSTM
+## Training SambotRL Agent with PPO-LSTM
 
 ### Training & Evaluation
 Available agents include: DQN, PPO, PPO-LSTM. To train PPO-LSTM model, please run:
@@ -50,6 +50,7 @@ observation_space = spaces.Dict(
             }
         ) 
 ```
+![Alt observation_space](images/observation_space.png?raw=true "Observation Space")
 - **Reward Function**: we incorporate both per-step reward function & terminal reward function: 
 	- <ins>Per-step reward</ins> is currently based on the improvement of concentration values inside the formation at the current location
 	- <ins>Terminal reward</ins> is reward added when terminal state is reached. It is based on the similarity between the final mapping result w.r.t the actual field
@@ -60,4 +61,9 @@ Changes made to SambotRL's original gym environment:
 
 - Diffusion Field & Agent Field are now their own separate classes (please check spatial_diffusion_field.py & agent_field.py) to improve readability & maintainability.
 - Per-step diffusion field update for the field environment has been replaced with loading pre-recorded snapshots of environment state. This allows us to avoid calculating new updates to the environment for each timestep, which helps speed up training time.
+
+### Results
+(🔴 "Red Star" denotes agent starting position)
+![Alt training_result_1](images/demo_result_1.png?raw=true "Result 1")
+![Alt training_result_2](images/demo_result_2.png?raw=true "Result 2")
 
